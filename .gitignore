@@ -2,7 +2,8 @@
 .env
 
 # storage files
-storage
+go-stardard-structure/storage
 
 # config 
 configs/local.yaml
+.DS_Store

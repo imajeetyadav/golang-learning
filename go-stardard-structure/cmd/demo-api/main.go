@@ -4,6 +4,7 @@ import (
 	"context"
 	configs "demo/internal/config"
 	"demo/internal/http/handlers/students"
+	"demo/internal/storage/sqlite"
 	"log/slog"
 	"net/http"
 	"os"
@@ -13,12 +14,26 @@ import (
 )
 
 func main() {
+
+	// Load configuration
+	slog.Info("Loading configuration")
 	cfg := configs.MustLoad()
 
+	// Initialize storage
+	slog.Info("Initializing storage")
+	storage, err := sqlite.New(cfg)
+	if err != nil {
+		slog.Error("Failed to initialize storage", slog.String("env", cfg.Env), slog.String("error", err.Error()))
+		os.Exit(1)
+	}
+
+	// Initialize HTTP server
+	slog.Info("Setting up HTTP server")
 	router := http.NewServeMux()
 
-	router.HandleFunc("POST /api/students", students.New())
+	router.HandleFunc("POST /api/students", students.New(storage))
 
+	// Start HTTP server
 	server := http.Server{
 		Addr:    cfg.Addr,
 		Handler: router,
