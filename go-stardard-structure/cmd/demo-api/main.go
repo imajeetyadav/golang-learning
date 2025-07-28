@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	configs "demo/internal/config"
+	"demo/internal/http/handlers/students"
 	"log/slog"
 	"net/http"
 	"os"
@@ -16,10 +17,7 @@ func main() {
 
 	router := http.NewServeMux()
 
-	router.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("Hello, World!"))
-	})
+	router.HandleFunc("POST /api/students", students.New())
 
 	server := http.Server{
 		Addr:    cfg.Addr,
