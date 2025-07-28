@@ -1,0 +1,8 @@
+# env files
+.env
+
+# storage files
+storage
+
+# config 
+configs/local.yaml
