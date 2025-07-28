@@ -1,0 +1,22 @@
+<html lang="en">    
+    <body>
+        <h2>Real-time response:</h2>
+        <p id="response"></p>
+    </body>
+    <script>
+
+        var sse = new EventSource('http://localhost:8080/events');;
+        var responseContainer = document.getElementById('response');
+        sse.onmessage = function(event) {
+            responseContainer.innerHTML += event.data + '';
+        };
+
+        sse.onerror = function(event) {
+            console.error("EventSource failed:", event);
+            setTimeout(function() {
+                responseContainer.innerHTML += ' ';
+            }, 1000);
+            
+        };
+    </script>
+</html>
