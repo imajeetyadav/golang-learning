@@ -5,6 +5,7 @@ import (
 	"demo/internal/config"
 	"demo/internal/types"
 	"fmt"
+	"log/slog"
 
 	_ "github.com/mattn/go-sqlite3" // SQLite driver
 )
@@ -32,17 +33,61 @@ func (s *SQLiteStorage) CreateStudent(name string, email string, age int) (int64
 	return id, nil
 }
 
-// DeleteStudent implements storage.Storage.
-func (s *SQLiteStorage) DeleteStudent(id int64) error {
-	_, err := s.Db.Exec("DELETE FROM students WHERE id = ?", id)
-	return err
+func (s *SQLiteStorage) UpdateStudent(id int64, name string, email string, age int) error {
+	stmt, err := s.Db.Prepare("UPDATE students SET name = ?, email = ?, age = ? WHERE id = ?")
+	if err != nil {
+		return fmt.Errorf("failed to prepare update statement: %w", err)
+	}
+	defer stmt.Close()
+
+	result, err := stmt.Exec(name, email, age, id)
+	if err != nil {
+		return fmt.Errorf("failed to execute update statement: %w", err)
+	}
+
+	count, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get affected rows: %w", err)
+	}
+	if count == 0 {
+		return fmt.Errorf("no student found with ID %d", id)
+	}
+	slog.Info("Student updated successfully", slog.Int64("id", id))
+	return nil
 }
 
-// GetAllStudents implements storage.Storage.
+func (s *SQLiteStorage) DeleteStudent(id int64) error {
+	stmt, err := s.Db.Prepare("DELETE FROM students WHERE id = ?")
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	result, err := stmt.Exec(id)
+	if err != nil {
+		return fmt.Errorf("failed to delete student: %w", err)
+	}
+	count, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get affected rows: %w", err)
+	}
+	if count == 0 {
+		return fmt.Errorf("no student found with ID %d", id)
+	}
+	slog.Info("Student deleted successfully", slog.Int64("id", id))
+	return nil
+}
+
 func (s *SQLiteStorage) GetAllStudents() ([]types.Student, error) {
-	rows, err := s.Db.Query("SELECT id, name, email, age FROM students")
+	stmt, err := s.Db.Prepare("SELECT id, name, email, age FROM students")
 	if err != nil {
 		return nil, err
+	}
+	defer stmt.Close()
+
+	rows, err := stmt.Query()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get all students: %w", err)
 	}
 	defer rows.Close()
 
@@ -50,19 +95,14 @@ func (s *SQLiteStorage) GetAllStudents() ([]types.Student, error) {
 	for rows.Next() {
 		var student types.Student
 		if err := rows.Scan(&student.Id, &student.Name, &student.Email, &student.Age); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to scan student: %w", err)
 		}
 		students = append(students, student)
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, err
 	}
 
 	return students, nil
 }
 
-// GetStudentByID implements storage.Storage.
 func (s *SQLiteStorage) GetStudentByID(id int64) (types.Student, error) {
 
 	stmt, err := s.Db.Prepare("SELECT id, name, email, age FROM students WHERE id = ? LIMIT 1")
@@ -81,12 +121,6 @@ func (s *SQLiteStorage) GetStudentByID(id int64) (types.Student, error) {
 	}
 	return student, nil
 
-}
-
-// UpdateStudent implements storage.Storage.
-func (s *SQLiteStorage) UpdateStudent(id int64, name string, email string, age int) error {
-	_, err := s.Db.Exec("UPDATE students SET name = ?, email = ?, age = ? WHERE id = ?", name, email, age, id)
-	return err
 }
 
 func New(cfg *config.Config) (*SQLiteStorage, error) {
