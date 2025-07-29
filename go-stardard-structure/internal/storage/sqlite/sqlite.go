@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"demo/internal/config"
 	"demo/internal/types"
+	"fmt"
 
 	_ "github.com/mattn/go-sqlite3" // SQLite driver
 )
@@ -62,16 +63,24 @@ func (s *SQLiteStorage) GetAllStudents() ([]types.Student, error) {
 }
 
 // GetStudentByID implements storage.Storage.
-func (s *SQLiteStorage) GetStudentByID(id int64) (*types.Student, error) {
+func (s *SQLiteStorage) GetStudentByID(id int64) (types.Student, error) {
+
+	stmt, err := s.Db.Prepare("SELECT id, name, email, age FROM students WHERE id = ? LIMIT 1")
+	if err != nil {
+		return types.Student{}, err
+	}
+	defer stmt.Close()
+
 	var student types.Student
-	err := s.Db.QueryRow("SELECT id, name, email, age FROM students WHERE id = ?", id).Scan(&student.Id, &student.Name, &student.Email, &student.Age)
+	err = stmt.QueryRow(id).Scan(&student.Id, &student.Name, &student.Email, &student.Age)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, nil // No student found
+			return types.Student{}, fmt.Errorf("student with ID %d not found", id)
 		}
-		return nil, err
+		return types.Student{}, fmt.Errorf("failed to get student by ID: %w", err)
 	}
-	return &student, nil
+	return student, nil
+
 }
 
 // UpdateStudent implements storage.Storage.
